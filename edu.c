@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define MAX_C_CHAR 10 // TODO this will likely fail
+#define MAX_LINE 200
 #define ENABLE_LOG 1
 // TODO add time on log
 #define log(msg, ...) do { if (ENABLE_LOG) fprintf(stderr, msg, __VA_ARGS__); } while (0)
@@ -10,9 +12,6 @@
 
 enum CommandType {change, delete, print, undu, redo, quit};
 
-// TODO:
-// 1) what is static, inline
-// 2) I miss Haskell :(
 enum CommandType char2ct(char c) {
   enum CommandType ct;
   switch(c) {
@@ -44,6 +43,52 @@ struct Command {
   int arg2;
   enum CommandType type;
 };
+
+// Row utils
+struct Row {
+  char * data;
+  struct Row* next;
+  struct Row* prev; // TODO prob remove
+};
+
+struct Row *find(struct Row *row, int index) {
+  if(index == 0) {
+    return row;
+  }
+  if (row->next != NULL) {
+    return find(row->next, index-1);
+  }
+  return NULL;
+}
+
+void print_doc(struct Row *row) {
+  if (row == NULL){
+    printf("NULL\n");
+    return;
+  }
+  printf("%s --> ", row->data);
+  print_doc(row->next);
+  
+}
+
+void insert_row(struct Row *row, int index, char *data) {
+  if(index == 0) {
+
+    row->data = (char *) realloc(row->data, strlen(data));
+    strcpy(row->data, data);
+    return;
+  }
+  if (index > 0 && row->next == NULL) {
+    log("Creating a new node\n", NULL);
+    row->next = (struct Row *) malloc(sizeof(struct Row));
+    row->next->next = NULL;
+    insert_row(row, index, data);
+  } else {
+    insert_row(row->next, index-1, data);
+  }
+
+}
+
 
 // No input validity checks
 struct Command parse_command(char *str) {
@@ -79,18 +124,76 @@ struct Command read_command(FILE *fp) {
   return c;
     
 }
-
-void process_command(struct Command c){
-  if(c.type == quit){
-    return;
+void process_print(struct Command c, struct Row *doc_head){
+  struct Row *current = find(doc_head, c.arg1);
+  for (int i = c.arg1; i <= c.arg2 && current != NULL; i++){
+    fputs(current->data, stdout);
+    fputs("\n", stdout);
+    current = current->next;
   }
 }
 
+void process_delete(struct Command c, struct Row *doc_head){
+  struct Row *head = find(doc_head, c.arg1-1);
+  struct Row *current = head->next;
+  for (int i = c.arg1; i <= c.arg2 && current != NULL; i++){
+    log("Deleting the node with data: %s\n", current->data);
+    head->next = current->next;
+    free(current->data);
+    free(current);
+    current = head->next;
+  }
+
+  // TODO remove
+  print_doc(doc_head);
+
+}
+
+
+void process_change(struct Command c, struct Row *doc_head, FILE *fp_in){
+  // TODO remove
+  print_doc(doc_head);
+
+  char str[MAX_LINE];
+  struct Row* doc_head_c;
+  for (int i = c.arg1; i <= c.arg2; i++){
+    fgets(str, MAX_LINE, fp_in);
+    str[strlen(str)-1] = '\0';
+    doc_head_c = doc_head;
+    insert_row(doc_head_c, i, str);
+  }
+  // I assume the commands are correct, I drop the point
+  fgets(str, MAX_LINE, fp_in);
+  
+  // TODO remove
+  print_doc(doc_head);
+
+}
+
+void process_command(struct Command c, struct Row *doc_head, FILE *fp_in){
+  switch(c.type) {
+  case quit:
+    break;
+  case print:
+    process_print(c, doc_head);
+    break;
+  case change:
+    process_change(c, doc_head, fp_in);
+    break;
+  case delete:
+    process_delete(c, doc_head);
+    break;
+  }
+}
+
+
 int main() {
   struct Command c;
+  struct Row* doc_head = (struct Row *) malloc(sizeof(struct Row));
+  doc_head->next = NULL;
   do {
     c = read_command(stdin);
-    process_command(c);
+    process_command(c, doc_head, stdin);
   } while(c.type != quit);
 };
 
