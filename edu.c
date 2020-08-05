@@ -51,7 +51,8 @@ struct Row {
   struct Row* prev; // TODO prob remove
 };
 
-struct Row *find(struct Row *row, int index) {
+struct Row *find(struct Row *row, int index) { /*  */
+  
   if(index == 0) {
     return row;
   }
@@ -59,7 +60,7 @@ struct Row *find(struct Row *row, int index) {
     return find(row->next, index-1);
   }
   return NULL;
-}
+};
 
 void print_doc(struct Row *row) {
   if (row == NULL){
@@ -73,7 +74,7 @@ void print_doc(struct Row *row) {
 
 void insert_row(struct Row *row, int index, char *data) {
   if(index == 0) {
-
+    log("Allocating space for data\n", NULL);
     row->data = (char *) realloc(row->data, strlen(data));
     strcpy(row->data, data);
     return;
@@ -81,6 +82,7 @@ void insert_row(struct Row *row, int index, char *data) {
   if (index > 0 && row->next == NULL) {
     log("Creating a new node\n", NULL);
     row->next = (struct Row *) malloc(sizeof(struct Row));
+    row->next->data = (char *) malloc(MAX_LINE);
     row->next->next = NULL;
     insert_row(row, index, data);
   } else {
@@ -157,6 +159,7 @@ void process_change(struct Command c, struct Row *doc_head, FILE *fp_in){
   char str[MAX_LINE];
   struct Row* doc_head_c;
   for (int i = c.arg1; i <= c.arg2; i++){
+    log("Chaning line: %d\n", i);
     fgets(str, MAX_LINE, fp_in);
     str[strlen(str)-1] = '\0';
     doc_head_c = doc_head;
@@ -191,8 +194,10 @@ int main() {
   struct Command c;
   struct Row* doc_head = (struct Row *) malloc(sizeof(struct Row));
   doc_head->next = NULL;
+  fputs("\033c", stdout); // TODO remove
   do {
     c = read_command(stdin);
+    fputs("\033c", stdout); // TODO remove
     process_command(c, doc_head, stdin);
   } while(c.type != quit);
 };
