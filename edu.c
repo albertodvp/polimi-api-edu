@@ -50,16 +50,6 @@ struct Row {
   struct Row* prev; // TODO prob remove
 };
 
-struct Row *find(struct Row *row, int index) {
-  
-  if(index == 0) {
-    return row;
-  }
-  if (row->next != NULL) {
-    return find(row->next, index-1);
-  }
-  return NULL;
-};
 
 struct History {
   struct Command * c;
@@ -69,14 +59,35 @@ struct History {
 
 struct History * HISTORY = NULL;
 struct History * HISTORY_HEAD = NULL;
+struct Row * DOC_HEAD = NULL;
 
-void print_doc(struct Row *row) {
+
+struct Row *find(struct Row *row, int index) {
+  if(index == 0) {
+    return row;
+  }
+  if (row->next != NULL) {
+    return find(row->next, index-1);
+  }
+  return NULL;
+};
+
+
+struct Row *find_in_doc(int index) {
+  return find(DOC_HEAD, index);
+}
+
+void print_row(struct Row *row) {
   if (row == NULL){
     printf("NULL\n");
     return;
   }
   printf("%s --> ", row->data);
-  print_doc(row->next);
+  print_row(row->next);
+}
+
+void print_doc(){
+  print_row(DOC_HEAD);
 }
 
 void print_hist_sup(struct History *h) {
@@ -88,8 +99,10 @@ void print_hist_sup(struct History *h) {
     printf("() -->");
   } else {
     struct Command * c = h -> c;
+    if (HISTORY == h) {
+      printf("*** ");
+    }
     printf("(%d,%d t:%d)--> ", c->arg1, c->arg2, c->type);
-
   }
   print_hist_sup(h->next);
   
@@ -120,7 +133,6 @@ void insert_row(struct Row *row, int index, char *data) {
   }
 
 }
-
 
 // No input validity checks
 struct Command * parse_command(char *str) {
@@ -156,8 +168,8 @@ struct Command * read_command(FILE *fp) {
   return c;
     
 }
-void process_print(struct Command * c, struct Row *doc_head){
-  struct Row *current = find(doc_head, c->arg1);
+void process_print(struct Command * c){
+  struct Row *current = find_in_doc(c->arg1);
   for (int i = c->arg1; i <= c->arg2 && current != NULL; i++){
     fputs(current->data, stdout);
     fputs("\n", stdout);
@@ -165,26 +177,28 @@ void process_print(struct Command * c, struct Row *doc_head){
   }
 }
 
-void process_delete(struct Command * c, struct Row *doc_head){
-  struct Row *head = find(doc_head, c->arg1-1);
+void process_delete(struct Command * c){
+  struct Row *head = find_in_doc(c->arg1-1);
   struct Row *current = head->next;
   for (int i = c->arg1; i <= c->arg2 && current != NULL; i++){
     log("Deleting the node with data: %s\n", current->data);
     head->next = current->next;
+    // sava data on a in memory file
+    //current->data;
     free(current->data);
     free(current);
     current = head->next;
   }
 
   // TODO remove
-  print_doc(doc_head);
+  print_doc();
 
 }
 
 
-void process_change(struct Command * c, struct Row *doc_head, FILE *fp_in){
+void process_change(struct Command *c, FILE *fp_in){
   // TODO remove
-  print_doc(doc_head);
+  print_doc();
 
   char str[MAX_LINE];
   struct Row* doc_head_c;
@@ -192,21 +206,21 @@ void process_change(struct Command * c, struct Row *doc_head, FILE *fp_in){
     log("Chaning line: %d\n", i);
     fgets(str, MAX_LINE, fp_in);
     str[strlen(str)-1] = '\0';
-    doc_head_c = doc_head;
+    doc_head_c = DOC_HEAD;
     insert_row(doc_head_c, i, str);
   }
   // I assume the commands are correct, I drop the point
   fgets(str, MAX_LINE, fp_in);
   
   // TODO remove
-  print_doc(doc_head);
+  print_doc();
 
 }
-void process_undo(struct Command * c, struct Row *doc_head){
+void process_undo(struct Command * c){
   // TODO
 }
 
-void process_redo(struct Command * c, struct Row *doc_head){
+void process_redo(struct Command * c){
   // TODO
 }
 
@@ -224,26 +238,26 @@ void append_history(struct Command * c) {
   HISTORY->c = c;
 }
 
-void process_command(struct Command * c, struct Row *doc_head, FILE *fp_in){
+void process_command(struct Command * c, FILE *fp_in){
   switch(c->type) {
   case quit:
     break;
   case print:
-    process_print(c, doc_head);
+    process_print(c);
     break;
   case change:
     append_history(c);
-    process_change(c, doc_head, fp_in);
+    process_change(c, fp_in);
     break;
   case delete:
     append_history(c);
-    process_delete(c, doc_head);
+    process_delete(c);
     break;
   case redo:
-    process_redo(c, doc_head);
+    process_redo(c);
     break;
   case undo:
-    process_undo(c, doc_head);
+    process_undo(c);
     break;
   }
 }
@@ -256,20 +270,20 @@ void inizialize_hist(){
   HISTORY->c = NULL;
   HISTORY_HEAD = HISTORY;
 }
-
+void initialize_doc() {
+  printf("Initializing the document");
+  DOC_HEAD = (struct Row *) malloc(sizeof(struct Row));
+  DOC_HEAD->next = NULL;
+}
 
 int main() {
   struct Command * c;
-  struct Row* doc_head = (struct Row *) malloc(sizeof(struct Row));
-  //TODO inizialize doc, and global var
-  doc_head->next = NULL;
+  initialize_doc();
   inizialize_hist();
-  //fputs("\033c", stdout); // TODO remove
   do {
     print_hist();
     c = read_command(stdin);
-    //    fputs("\033c", stdout); // TODO remove
-    process_command(c, doc_head, stdin);
+    process_command(c, stdin);
   } while(c->type != quit);
 }
 
