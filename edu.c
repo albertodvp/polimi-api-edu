@@ -3,7 +3,7 @@
 #include <string.h>
 
 #define MAX_C_CHAR 10 // TODO this will likely fail
-#define MAX_LINE 200
+#define MAX_LINE 10000
 #define ENABLE_LOG 0
 // TODO add time on log
 #define log(msg, ...) do { if (ENABLE_LOG) fprintf(stderr, msg, __VA_ARGS__); } while (0)
@@ -121,11 +121,11 @@ char * insert_row(struct Row *row, int index, char *data) {
     char * old = NULL;
     if(row->data == NULL){
       log("Changing new node.\n", NULL);
-      row->data = (char *) malloc(strlen(data) + 1);
+      row->data = (char *) malloc(sizeof(char) *(strlen(data) + 1));
     } else {
       log("Changing old node.\n", NULL);      
       old = row->data;
-      row->data = (char *) malloc(strlen(data) + 1);
+      row->data = (char *) malloc(sizeof(char) * (strlen(data) + 1));
     }
     strcpy(row->data, data);
     return old;
@@ -180,7 +180,7 @@ struct Command * read_command(FILE *fp) {
 void process_print(struct Command * c){
   struct Row *current = find_in_doc(c->arg1);
   for (int i = c->arg1; i <= c->arg2; i++){
-    if (current != NULL) {
+    if (current != NULL && i != 0) {
       fputs(current->data, stdout);
       current = current->next;
     } else {
@@ -363,7 +363,6 @@ void append_history(struct Command * c) {
 void process_command(struct Command * c, FILE *fp_in){
   // TODO remove
   print_doc();
-
   switch(c->type) {
   case quit:
     break;
