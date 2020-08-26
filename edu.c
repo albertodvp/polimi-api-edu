@@ -4,14 +4,12 @@
 
 #define MAX_C_CHAR 10 // TODO this will likely fail
 #define MAX_LINE 10000
-#define ENABLE_LOG 0
-// TODO add time on log
-#define log(msg, ...) do { if (ENABLE_LOG) fprintf(stderr, msg, __VA_ARGS__); } while (0)
+
 
 enum CommandType {change, delete, print, undo, redo, quit};
 
 enum CommandType char2ct(char c) {
-  enum CommandType ct;
+  enum CommandType ct = quit;
   switch(c) {
   case 'c':
     ct = change;
@@ -70,7 +68,7 @@ struct Row *find(struct Row *row, int index) {
     return find(row->next, index-1);
   }
   return NULL;
-};
+}
 
 
 struct Row *find_in_doc(int index) {
@@ -79,10 +77,8 @@ struct Row *find_in_doc(int index) {
 
 void print_row(struct Row *row) {
   if (row == NULL){
-    log("NULL\n", NULL);
     return;
   }
-  log("%s --> ", row->data);
   print_row(row->next);
 }
 
@@ -92,38 +88,27 @@ void print_doc(){
 
 void print_hist_sup(struct History *h) {
   if (h == NULL){
-    log("NULL\n", NULL);
     return;
   }
   else if (h->c == NULL){
-    log("() -->", NULL);
   } else {
-    struct Command * c = h -> c;
     if (HISTORY == h) {
-      log("*** ", NULL);
     }
-    log("(%d,%d t:%d, data: %s)--> ", c->arg1, c->arg2, c->type, c->data);
   }
   print_hist_sup(h->next);
   
 }
 
 void print_hist() {
-  log("-------\n", NULL);
-  log("History:\n", NULL);
   print_hist_sup(HISTORY_HEAD);
-  log("-------\n", NULL);
 }
 
 char * insert_row(struct Row *row, int index, char *data) {
   if(index == 0) {
-    log("Allocating space for data\n", NULL);
     char * old = NULL;
     if(row->data == NULL){
-      log("Changing new node.\n", NULL);
-      row->data = (char *) malloc(sizeof(char) *(strlen(data) + 1));
+      row->data = (char *) malloc(sizeof(char) * (strlen(data) + 1));
     } else {
-      log("Changing old node.\n", NULL);      
       old = row->data;
       row->data = (char *) malloc(sizeof(char) * (strlen(data) + 1));
     }
@@ -131,7 +116,6 @@ char * insert_row(struct Row *row, int index, char *data) {
     return old;
   }
   if (index > 0 && row->next == NULL) {
-    log("Creating a new node\n", NULL);
     row->next = (struct Row *) malloc(sizeof(struct Row));
     row->next->data = NULL;
     row->next->next = NULL;
@@ -144,7 +128,6 @@ char * insert_row(struct Row *row, int index, char *data) {
 
 // No input validity checks
 struct Command * parse_command(char *str) {
-  log("Parsing command: %s", str);
   char arg[MAX_C_CHAR];
   int i = 0;
   struct Command * c = (struct Command *) malloc(sizeof(struct Command));
@@ -166,13 +149,12 @@ struct Command * parse_command(char *str) {
   }
   c->type = char2ct(*str);
   c->data = NULL;
-  log("Command: arg1: %d, arg2: %d, type: %d\n", c->arg1, c->arg2, c->type);
   return c;
-};
+}
 
 struct Command * read_command(FILE *fp) {
   char str[MAX_C_CHAR];
-  fgets(str, MAX_C_CHAR, fp);
+  char * _ = fgets(str, MAX_C_CHAR, fp);
   struct Command * c = parse_command(str);
   return c;
     
@@ -239,14 +221,12 @@ char * clean_doc_from(int i){
 
 void process_change(struct Command *c, FILE *fp_in){
   char str[MAX_LINE];
-  struct Row* doc_head_c;
   char * old;
 
   c->data = (char *) malloc(sizeof(char));
   *(c->data) = '\0';
   for (int i = c->arg1; i <= c->arg2; i++){
-    log("Changing line: %d\n", i);
-    fgets(str, MAX_LINE, fp_in);
+    char * _ = fgets(str, MAX_LINE, fp_in);
     if(strlen(str) == 0) {
       old = clean_doc_from(i);
       strcat(c->data, old);
@@ -263,7 +243,7 @@ void process_change(struct Command *c, FILE *fp_in){
   
   // I assume the commands are correct, I drop the point
   if(fp_in == stdin) {
-    fgets(str, MAX_LINE, fp_in);
+    char * _ = fgets(str, MAX_LINE, fp_in);
   }
 }
 void process_insert(struct Command * c){
@@ -279,7 +259,7 @@ void process_insert(struct Command * c){
     if (*data == '\n'){
       str[j] = '\0';
       p->next  = (struct Row *) malloc(sizeof(struct Row));
-      p->next->data = (char *)malloc(sizeof(char) * strlen(str));// TODO this pattern in different places
+      p->next->data = (char *)malloc(sizeof(char) * (strlen(str)+ 1));// TODO this pattern in different places
       strcpy(p->next->data, str);
       j = 0;
       p = p->next;
@@ -294,7 +274,6 @@ void process_insert(struct Command * c){
 }
 
 void single_hist_mov(struct Command * c) {
-  log("(%d,%d t:%d, data: %s) \n", c->arg1, c->arg2, c->type, c->data);
   switch(c->type) {
   case change:
     if(strlen(c->data) == 0) {
@@ -309,7 +288,7 @@ void single_hist_mov(struct Command * c) {
     } else {
       // Change lines
       char * data = c->data;
-      FILE * in = fmemopen(data, strlen(data)+1, "r+");
+      FILE * in = fmemopen(data, sizeof(char) * (strlen(data)+1), "r+");
       process_change(c, in);
       free(data);
       fclose(in);
@@ -324,12 +303,13 @@ void single_hist_mov(struct Command * c) {
       process_insert(c);
     }
     break;
+  default:
+    break;
   }
 }
 
 void process_undo(struct Command * c){
   for(int i=0; i<c->arg1 && HISTORY->prev != NULL; i++){
-    log("Undoing...", NULL);
     single_hist_mov(HISTORY->c);
     HISTORY = HISTORY->prev;
   }
@@ -338,7 +318,6 @@ void process_undo(struct Command * c){
 void process_redo(struct Command * c){
     for(int i=0; i<c->arg1; i++){
       if(HISTORY->next != NULL){
-	log("Redoing...", NULL);
 	HISTORY = HISTORY->next;
 	single_hist_mov(HISTORY->c);
       }
@@ -348,9 +327,7 @@ void process_redo(struct Command * c){
 void append_history(struct Command * c) {
   if (HISTORY->next != NULL){
       // TODO clear from next
-    log("Clear unreachable history\n", NULL);
   }
-  log("Creating new history node\n", NULL);
   struct History * next = (struct History *) malloc(sizeof(struct History));
   next->next = NULL;
   next->prev = HISTORY;
@@ -361,8 +338,6 @@ void append_history(struct Command * c) {
 }
 
 void process_command(struct Command * c, FILE *fp_in){
-  // TODO remove
-  print_doc();
   switch(c->type) {
   case quit:
     break;
@@ -384,13 +359,9 @@ void process_command(struct Command * c, FILE *fp_in){
     process_undo(c);
     break;
   }
-  // TODO remove
-  print_doc();
-
 }
 
 void inizialize_hist(){
-  log("Initializing History\n", NULL);
   HISTORY = (struct History *) malloc(sizeof(struct History));
   HISTORY->next = NULL;
   HISTORY->prev = NULL;
@@ -398,7 +369,6 @@ void inizialize_hist(){
   HISTORY_HEAD = HISTORY;
 }
 void initialize_doc() {
-  log("Initializing the document\n", NULL);
   DOC_HEAD = (struct Row *) malloc(sizeof(struct Row));
   DOC_HEAD->next = NULL;
 }
@@ -408,7 +378,6 @@ int main() {
   initialize_doc();
   inizialize_hist();
   do {
-    print_hist();
     c = read_command(stdin);
     process_command(c, stdin);
   } while(c->type != quit);
