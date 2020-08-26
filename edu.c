@@ -4,7 +4,7 @@
 
 #define MAX_C_CHAR 10 // TODO this will likely fail
 #define MAX_LINE 200
-#define ENABLE_LOG 1
+#define ENABLE_LOG 0
 // TODO add time on log
 #define log(msg, ...) do { if (ENABLE_LOG) fprintf(stderr, msg, __VA_ARGS__); } while (0)
 
@@ -79,10 +79,10 @@ struct Row *find_in_doc(int index) {
 
 void print_row(struct Row *row) {
   if (row == NULL){
-    printf("NULL\n");
+    log("NULL\n", NULL);
     return;
   }
-  printf("%s --> ", row->data);
+  log("%s --> ", row->data);
   print_row(row->next);
 }
 
@@ -92,27 +92,27 @@ void print_doc(){
 
 void print_hist_sup(struct History *h) {
   if (h == NULL){
-    printf("NULL\n");
+    log("NULL\n", NULL);
     return;
   }
   else if (h->c == NULL){
-    printf("() -->");
+    log("() -->", NULL);
   } else {
     struct Command * c = h -> c;
     if (HISTORY == h) {
-      printf("*** ");
+      log("*** ", NULL);
     }
-    printf("(%d,%d t:%d, data: %s)--> ", c->arg1, c->arg2, c->type, c->data);
+    log("(%d,%d t:%d, data: %s)--> ", c->arg1, c->arg2, c->type, c->data);
   }
   print_hist_sup(h->next);
   
 }
 
 void print_hist() {
-  printf("-------\n");
-  printf("History:\n");
+  log("-------\n", NULL);
+  log("History:\n", NULL);
   print_hist_sup(HISTORY_HEAD);
-  printf("-------\n");
+  log("-------\n", NULL);
 }
 
 char * insert_row(struct Row *row, int index, char *data) {
@@ -179,15 +179,27 @@ struct Command * read_command(FILE *fp) {
 }
 void process_print(struct Command * c){
   struct Row *current = find_in_doc(c->arg1);
-  for (int i = c->arg1; i <= c->arg2 && current != NULL; i++){
-    fputs(current->data, stdout);
+  for (int i = c->arg1; i <= c->arg2; i++){
+    if (current != NULL) {
+      fputs(current->data, stdout);
+      current = current->next;
+    } else {
+      fputs(".", stdout);
+    }
     fputs("\n", stdout);
-    current = current->next;
   }
 }
 
 void process_delete(struct Command * c){
   struct Row *head = find_in_doc(c->arg1-1);
+  if (head == NULL || head->next == NULL){
+    c->data = "";
+    // Not a valid deletion
+    //    HISTORY = HISTORY->prev; // TODO THIS IS WRONG??
+    // tood clean invalid delete from history (clean History from point)
+    return;
+
+  }
   struct Row *current = head->next;
   for (int i = c->arg1; i <= c->arg2 && current != NULL; i++){
     head->next = current->next;
@@ -200,22 +212,6 @@ void process_delete(struct Command * c){
     free(current);
     current = head->next;
   }
-}
-void insert(int i, char *data){
-  char row[MAX_LINE] = "";
-  int j = 0;
-  while (*data){
-    if(*data == '\n'){
-      row[j] = '\0';
-      j = 0;
-      // insert node
-      insert(i, row);
-    } else {
-      row[j++] = *data;
-    }
-    data++;
-  }
-  
 }
 
 char * clean_doc_from(int i){
@@ -240,6 +236,7 @@ char * clean_doc_from(int i){
   }
   return dropped_string;
 }
+
 void process_change(struct Command *c, FILE *fp_in){
   char str[MAX_LINE];
   struct Row* doc_head_c;
@@ -269,6 +266,32 @@ void process_change(struct Command *c, FILE *fp_in){
     fgets(str, MAX_LINE, fp_in);
   }
 }
+void process_insert(struct Command * c){
+  struct Row * p = DOC_HEAD;
+  struct Row * supp = NULL;
+  int j;
+  for(j = 1; j<c->arg1; j++, p=p->next) { }
+  supp = p->next;
+  char * data = c->data;
+  char str[MAX_LINE];
+  j = 0;
+  while(*data != '\0'){
+    if (*data == '\n'){
+      str[j] = '\0';
+      p->next  = (struct Row *) malloc(sizeof(struct Row));
+      p->next->data = (char *)malloc(sizeof(char) * strlen(str));// TODO this pattern in different places
+      strcpy(p->next->data, str);
+      j = 0;
+      p = p->next;
+    } else {
+      str[j] = *data;
+      j++;
+    }
+    data++;
+  }
+  strcpy(c->data, "");
+  p->next = supp; 
+}
 
 void single_hist_mov(struct Command * c) {
   log("(%d,%d t:%d, data: %s) \n", c->arg1, c->arg2, c->type, c->data);
@@ -293,8 +316,13 @@ void single_hist_mov(struct Command * c) {
     }
     break;
   case delete:
-    // TODO
-    exit(1);
+    if(strlen(c->data) == 0) {
+      // Redoing
+      process_delete(c);
+    } else {
+      // Undoing
+      process_insert(c);
+    }
     break;
   }
 }
@@ -363,7 +391,7 @@ void process_command(struct Command * c, FILE *fp_in){
 }
 
 void inizialize_hist(){
-  fputs("Initializing History\n", stdout);
+  log("Initializing History\n", NULL);
   HISTORY = (struct History *) malloc(sizeof(struct History));
   HISTORY->next = NULL;
   HISTORY->prev = NULL;
@@ -371,7 +399,7 @@ void inizialize_hist(){
   HISTORY_HEAD = HISTORY;
 }
 void initialize_doc() {
-  fputs("Initializing the document\n", stdout);
+  log("Initializing the document\n", NULL);
   DOC_HEAD = (struct Row *) malloc(sizeof(struct Row));
   DOC_HEAD->next = NULL;
 }
