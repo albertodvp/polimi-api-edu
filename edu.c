@@ -162,8 +162,7 @@ struct Command * parse_command(char *str) {
 
 struct Command * read_command(FILE *fp) {
   char str[MAX_C_CHAR];
-  if(fgets(str, MAX_C_CHAR, fp)==NULL)
-    exit(1);
+  char * _ = fgets(str, MAX_C_CHAR, fp);
   struct Command * c = parse_command(str);
   return c;
 }
@@ -192,7 +191,10 @@ void drop_last_hist_command() {
 }
 
 void process_print(struct Command * c){
-  if (c->arg1 == 0) return;
+  if (c->arg1 == 0 && c->arg2 != 0 ){
+      return;
+  }
+
   struct Row *current = find_in_doc(c->arg1);
   for (int i = c->arg1; i <= c->arg2; i++){
     if (current != NULL && i != 0) {
@@ -211,6 +213,7 @@ void process_delete(struct Command * c){
     if(c->data == NULL) {
       c->data = (char *)malloc(sizeof(char));
     *(c->data) = '\0';
+    //        drop_last_hist_command();
     }
     return;
   }
@@ -260,6 +263,7 @@ char * clean_doc_from(int i){
       strcat(dropped_string, "\n");
       free(p->data);
       free(p);
+      NEXT_LINE--;
     } 
     p = supp;      
     j++;
@@ -270,11 +274,10 @@ char * clean_doc_from(int i){
 void process_change(struct Command *c, FILE *fp_in){
   char str[MAX_LINE];
   char * old;
-  //  printf("Allocating space for string in command\n");
   if(c->data == NULL){
     c->data = (char *) malloc(sizeof(char));
-    *(c->data) = '\0';
   }
+  *(c->data) = '\0';
 
   if (c->arg1 > NEXT_LINE || c->arg1 == 0) {
     drop_last_hist_command();
@@ -282,8 +285,9 @@ void process_change(struct Command *c, FILE *fp_in){
   }
 
   for (int i = c->arg1; i <= c->arg2; i++){
-    if(fgets(str, MAX_LINE, fp_in) == NULL)
-      exit(1);
+    //    printf("------------------------------------------------------------>\n");
+    char * _ = fgets(str, MAX_LINE, fp_in);
+    //    printf("--------------str:    %s   ---------------------------------------------->\n", str);
     if(strlen(str) == 0) {
       // Drop some rows
       old = clean_doc_from(i);
@@ -294,6 +298,7 @@ void process_change(struct Command *c, FILE *fp_in){
       free(old);
       break;
     } else {
+      //    printf("------------------------------------------------------------>\n");
       // Remove \n
       str[strlen(str)-1] = '\0';
       old = insert_row(DOC_HEAD, i, str);
@@ -306,15 +311,12 @@ void process_change(struct Command *c, FILE *fp_in){
 	strcat(c->data, "\n");
 	free(old);
       }
-
     }
-
   }
   
   // I assume the commands are correct, I drop the point
   if(fp_in == stdin) {
-    if(fgets(str, MAX_LINE, fp_in) == NULL)
-      exit(1);
+    char * _ = fgets(str, MAX_LINE, fp_in);
   }
 }
 void process_insert(struct Command * c){
@@ -347,6 +349,7 @@ void process_insert(struct Command * c){
 }
 
 void single_hist_mov(struct Command * c) {
+  //  printf("Redoing/undoing command: %d,%d - type: %d - data %s \n",c->arg1, c->arg2, c->type, c->data);
   switch(c->type) {
   case change:
     if(strlen(c->data) == 0) {
@@ -362,6 +365,8 @@ void single_hist_mov(struct Command * c) {
     } else {
       // Change lines
       FILE * in = fmemopen(NULL, sizeof(char) * (strlen(c->data)+1), "r+");
+      fputs(c->data, in);
+      rewind(in);
       process_change(c, in);
       fclose(in);
     }
@@ -468,11 +473,12 @@ int main() {
   inizialize_hist();
   int q = 0;
   do {
-    //    print_doc();
-    //    printf("\n\n\n");
-    //    print_history();
+    //       print_doc();
+    //       printf("\n\n\n");
+    //       print_history();
+    //       printf("Next line: %d\n", NEXT_LINE);
     c = read_command(stdin);
-    //    print_history();
+    //     print_history();
     q = process_command(c, stdin);
   } while(!q);
   clean_history_doc();  
