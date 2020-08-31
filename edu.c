@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_C_CHAR 10 // TODO this will likely fail
-#define MAX_LINE 10000
+#define MAX_C_CHAR 1000 // TODO this will likely fail
+#define MAX_LINE 1025
 
 int NEXT_LINE;
 enum CommandType {change, delete, print, undo, redo, quit};
