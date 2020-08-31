@@ -320,6 +320,7 @@ void process_change(struct Command *c, FILE *fp_in){
   }
 }
 void process_insert(struct Command * c){
+  printf("fasdf");
   struct Row * p = DOC_HEAD;
   struct Row * supp = NULL;
   int j = 1;

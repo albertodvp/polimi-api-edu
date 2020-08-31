@@ -1,12 +1,21 @@
 import re
 import sys
 
-# grep -P "(\d+) allocs, (\d+) frees" * > find_leak_in
+
+def extract_alloc_data(path: str):
+    # TODO
+    command = 'grep -P "(\d+) allocs, (\d+) frees" path'
+    raise NotImplementedError()
+
+
 if __name__ == "__main__":
-    with open(sys.argv[1]) as fp:
-        for l in fp:
-            pattern = r"(\d+) allocs, (\d+) frees"
-            match = re.search(pattern, l)
-            alloc, free = match.groups()
-            if alloc != free:
-                print("LEAK:", l[:-1])
+    # Valgrind output folder
+    path = sys.argv[1]
+    #    out_fp = extract_alloc_data(path)
+    out_fp = open(path)
+    for line in out_fp:
+        pattern = r"(\d+) allocs, (\d+) frees"
+        match = re.search(pattern, line)
+        alloc, free = match.groups()
+        if alloc != free:
+            print("LEAK:", line[:-1])
