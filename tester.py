@@ -4,10 +4,10 @@ from edu_utils import create_custom_tests
 from execs import execute_debug, execute_public
 from gens import gen_custom_files, gen_public_files
 
-SEED = 0
+SEED = 42
 
 
-CREATE = False
+CREATE = True
 PUBLIC_TESTS = False
 EXECUTE_DEBUG = True
 
