@@ -280,15 +280,12 @@ void process_change(struct Command *c, FILE *fp_in){
   *(c->data) = '\0';
 
   if (c->arg1 > NEXT_LINE || c->arg1 == 0) {
-    drop_last_hist_command();
+    drop_last_hist_command(); // TODO
     return;
   }
 
   for (int i = c->arg1; i <= c->arg2; i++){
-    //    printf("------------------------------------------------------------>\n");
-    char * _ = fgets(str, MAX_LINE, fp_in);
-    //    printf("--------------str:    %s   ---------------------------------------------->\n", str);
-    if(strlen(str) == 0) {
+    if(!fgets(str, MAX_LINE, fp_in)) {
       // Drop some rows
       old = clean_doc_from(i);
       int l1 = strlen(c->data);
@@ -320,7 +317,6 @@ void process_change(struct Command *c, FILE *fp_in){
   }
 }
 void process_insert(struct Command * c){
-  printf("fasdf");
   struct Row * p = DOC_HEAD;
   struct Row * supp = NULL;
   int j = 1;
@@ -365,7 +361,8 @@ void single_hist_mov(struct Command * c) {
       c->data = dc.data;
     } else {
       // Change lines
-      FILE * in = fmemopen(NULL, sizeof(char) * (strlen(c->data)+1), "r+");
+      //      printf("COMMAND DATA: %s\n", c->data);
+      FILE * in = fmemopen(NULL, sizeof(char) * strlen(c->data), "r+");
       fputs(c->data, in);
       rewind(in);
       process_change(c, in);
@@ -474,12 +471,12 @@ int main() {
   inizialize_hist();
   int q = 0;
   do {
-    //       print_doc();
-    //       printf("\n\n\n");
-    //       print_history();
-    //       printf("Next line: %d\n", NEXT_LINE);
+    /* print_doc(); */
+    /* printf("\n\n\n"); */
+    /* print_history(); */
+    /* printf("Next line: %d\n", NEXT_LINE); */
     c = read_command(stdin);
-    //     print_history();
+    //    print_history();
     q = process_command(c, stdin);
   } while(!q);
   clean_history_doc();  
