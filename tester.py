@@ -7,9 +7,9 @@ from gens import gen_custom_files, gen_public_files
 SEED = 42
 
 
-CREATE = True
-PUBLIC_TESTS = False
-EXECUTE_DEBUG = True
+CREATE = False
+PUBLIC_TESTS = True
+EXECUTE_DEBUG = False
 
 if __name__ == "__main__":
     rnd.seed(SEED)
