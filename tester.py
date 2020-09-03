@@ -4,12 +4,12 @@ from edu_utils import create_custom_tests
 from execs import execute_debug, execute_public
 from gens import gen_custom_files, gen_public_files
 
-SEED = 42
+SEED = 0
 
 
-CREATE = False
+CREATE = True
 PUBLIC_TESTS = True
-EXECUTE_DEBUG = False
+EXECUTE_DEBUG = True
 
 if __name__ == "__main__":
     rnd.seed(SEED)

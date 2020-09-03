@@ -2,9 +2,9 @@ import random as rnd
 import string
 
 MAX = 10
-N_FILES = 10000
+N_FILES = 100
 COMMANDS_PER_FILE = 10
-STR_LEN_RANGE = range(20, 200)
+STR_LEN_RANGE = range(20, 1000)
 
 TEST_FILE_NAME = "tests_out/edu_tester.{}.{}"
 POSTFIXES = ["in", "out", "err"]
@@ -22,6 +22,13 @@ def generate_random_args():
 
 def change_routine(args, hist, i):
     next_i = i + 1
+    if len(hist) != next_i:
+        # Dropping history
+        del hist[next_i:]
+    if args[0] > hist[i]:
+        hist.append(hist[i])
+        return next_i, None
+
     if len(hist) != next_i:
         # Dropping history
         del hist[next_i:]
@@ -84,11 +91,7 @@ def create_custom_tests():
                 metadata = None
                 fp.write(c)
                 fp.write("\n")
-                # print("Next line", next_line)
-                # print("Next hist", next_line_history)
-                # print("Command", c)
-                # print("\n\n")
-                if meta_gen and args[0] > 0 and args[0] <= next_line_history[next_line]:
+                if meta_gen and args[0] > 0:
                     # Change or delete
                     next_line, metadata = meta_gen(
                         args, hist=next_line_history, i=next_line
@@ -97,5 +100,9 @@ def create_custom_tests():
                     if metadata:
                         # Change
                         fp.write(metadata)
+                # print("Next line index", next_line)
+                # print("Next hist", next_line_history)
+                # print("Command", c)
+                # print("\n\n")
 
             fp.write("q\n")

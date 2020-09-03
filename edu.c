@@ -3,7 +3,7 @@
 #include <string.h>
 
 #define MAX_C_CHAR 10 // TODO this will likely fail
-#define MAX_LINE 1025
+#define MAX_LINE 10000
 
 int NEXT_LINE;
 enum CommandType {change, delete, print, undo, redo, quit};
@@ -162,7 +162,9 @@ struct Command * parse_command(char *str) {
 
 struct Command * read_command(FILE *fp) {
   char str[MAX_C_CHAR];
-  char * _ = fgets(str, MAX_C_CHAR, fp);
+  if(fgets(str, MAX_C_CHAR, fp) == NULL){
+    exit(1);
+  }
   struct Command * c = parse_command(str);
   return c;
 }
@@ -268,6 +270,7 @@ char * clean_doc_from(int i){
     p = supp;      
     j++;
   }
+  dropped_string = realloc(dropped_string, (strlen(dropped_string)+1) * sizeof(char));
   return dropped_string;
 }
 
@@ -278,7 +281,6 @@ void process_change(struct Command *c, FILE *fp_in){
     c->data = (char *) malloc(sizeof(char));
   }
   *(c->data) = '\0';
-
   if (c->arg1 > NEXT_LINE || c->arg1 == 0) {
     drop_last_hist_command(); // TODO
     return;
@@ -290,7 +292,7 @@ void process_change(struct Command *c, FILE *fp_in){
       old = clean_doc_from(i);
       int l1 = strlen(c->data);
       int l2 = strlen(old);
-      c->data = realloc(c->data, (l1 + l2 + 1) * sizeof(char));
+      c->data = realloc(c->data, (l1 + l2 + 2) * sizeof(char));
       strcat(c->data, old);
       free(old);
       break;
@@ -303,7 +305,7 @@ void process_change(struct Command *c, FILE *fp_in){
 	// Changed lines
 	int l1 = strlen(c->data);
 	int l2 = strlen(old);
-	c->data = (char *)realloc(c->data, (l1 + l2 + 2) * sizeof(char));
+	c->data = realloc(c->data, (l1 + l2 + 2) * sizeof(char));
 	strcat(c->data, old);
 	strcat(c->data, "\n");
 	free(old);
@@ -313,7 +315,9 @@ void process_change(struct Command *c, FILE *fp_in){
   
   // I assume the commands are correct, I drop the point
   if(fp_in == stdin) {
-    char * _ = fgets(str, MAX_LINE, fp_in);
+    if(fgets(str, MAX_LINE, fp_in) == NULL){
+      exit(1);
+    }
   }
 }
 void process_insert(struct Command * c){
