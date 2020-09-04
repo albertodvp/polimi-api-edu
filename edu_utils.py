@@ -2,11 +2,11 @@ import random as rnd
 import string
 
 MAX = 10
-N_FILES = 100
-COMMANDS_PER_FILE = 10
-STR_LEN_RANGE = range(20, 1000)
+N_FILES = 10
+COMMANDS_PER_FILE = 20
+STR_LEN_RANGE = range(20, 1024)
 
-TEST_FILE_NAME = "tests_out/edu_tester.{}.{}"
+TEST_FILE_NAME = "tests_out/custom_input.{}.{}"
 POSTFIXES = ["in", "out", "err"]
 
 

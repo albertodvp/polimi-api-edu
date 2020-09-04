@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_C_CHAR 10 // TODO this will likely fail
-#define MAX_LINE 10000
+#define MAX_C_CHAR 20 // TODO this will likely fail
+#define MAX_LINE 1040
 
 int NEXT_LINE;
 enum CommandType {change, delete, print, undo, redo, quit};
@@ -261,6 +261,9 @@ char * clean_doc_from(int i){
       // Update tail
       p->next = NULL;
     } else if (j >= i){
+      int l1 = strlen(p->data);
+      int l2 = strlen(dropped_string);
+      dropped_string = realloc(dropped_string, (l1 + l2 + 2) * sizeof(char));
       strcat(dropped_string, p->data);
       strcat(dropped_string, "\n");
       free(p->data);
@@ -270,7 +273,6 @@ char * clean_doc_from(int i){
     p = supp;      
     j++;
   }
-  dropped_string = realloc(dropped_string, (strlen(dropped_string)+1) * sizeof(char));
   return dropped_string;
 }
 
@@ -299,7 +301,8 @@ void process_change(struct Command *c, FILE *fp_in){
     } else {
       //    printf("------------------------------------------------------------>\n");
       // Remove \n
-      str[strlen(str)-1] = '\0';
+      if(strlen(str) > 0) 
+	str[strlen(str)-1] = '\0';
       old = insert_row(DOC_HEAD, i, str);
       if(old != NULL){
 	// Changed lines
@@ -327,7 +330,7 @@ void process_insert(struct Command * c){
   for(; j<c->arg1; j++, p=p->next) { }
   supp = p->next;
   char * data = c->data;
-  char str[MAX_LINE];
+  char str[MAX_LINE] = "";
   j = 0;
   while(*data != '\0'){
     if (*data == '\n'){
