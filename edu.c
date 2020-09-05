@@ -4,8 +4,11 @@
 
 #define MAX_C_CHAR 20 // TODO this will likely fail
 #define MAX_LINE 1040
+#define MAX_LINE_PER_FILE 10000
 
 int NEXT_LINE;
+FILE * in_mem_stdin = NULL;
+
 
 struct Command {
   int arg1;
@@ -290,7 +293,7 @@ void process_change(struct Command *c, FILE *fp_in){
   }
   
   // I assume the commands are correct, I drop the point
-  if(fp_in == stdin) {
+  if(fp_in == in_mem_stdin) {
     if(fgets(str, MAX_LINE, fp_in) == NULL){
       exit(1);
     }
@@ -444,9 +447,22 @@ void clean_history_doc(){
   clean_doc(DOC_HEAD);
 }
 
+FILE * read_file_in_memory(FILE * fp){
+  int s = (MAX_LINE + 1) * MAX_LINE_PER_FILE;  
+  char * text = (char *)malloc(sizeof(char) * s);
+  fread(text, sizeof(char), s, fp);
+  s = strlen(text) + 1;
+  FILE * out = fmemopen(NULL, sizeof(char) * s, "w+");
+  fputs(text, out);
+  rewind(out);
+  free(text);
+  return out;
+}
+
 int main() {
   struct Command * c;
   NEXT_LINE = 1;
+  in_mem_stdin = read_file_in_memory(stdin);
   initialize_doc();
   inizialize_hist();
   int q = 0;
@@ -455,9 +471,9 @@ int main() {
     /* printf("\n\n\n"); */
     /* print_history(); */
     /* printf("Next line: %d\n", NEXT_LINE); */
-    c = read_command(stdin);
+    c = read_command(in_mem_stdin);
     //    print_history();
-    q = process_command(c, stdin);
+    q = process_command(c, in_mem_stdin);
   } while(!q);
   clean_history_doc();  
 }
