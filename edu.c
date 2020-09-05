@@ -6,38 +6,11 @@
 #define MAX_LINE 1040
 
 int NEXT_LINE;
-enum CommandType {change, delete, print, undo, redo, quit};
-
-enum CommandType char2ct(char c) {
-  enum CommandType ct = quit;
-  switch(c) {
-  case 'c':
-    ct = change;
-    break;
-  case 'd':
-    ct = delete;
-    break;
-  case 'p':
-    ct = print;
-    break;
-  case 'u':
-    ct = undo;
-    break;
-  case 'r':
-    ct = redo;
-    break;
-  case 'q':
-    ct = quit;
-    break;
-  }
-  return ct;
-}
-
 
 struct Command {
   int arg1;
   int arg2;
-  enum CommandType type;
+  char type;
   char * data;
 } ;
 
@@ -155,7 +128,7 @@ struct Command * parse_command(char *str) {
     arg[i] = '\0';
     c->arg2 = atoi(arg);
   }
-  c->type = char2ct(*str);
+  c->type = *str;
   c->data = NULL;
   return c;
 }
@@ -355,14 +328,14 @@ void process_insert(struct Command * c){
 void single_hist_mov(struct Command * c) {
   //  printf("Redoing/undoing command: %d,%d - type: %d - data %s \n",c->arg1, c->arg2, c->type, c->data);
   switch(c->type) {
-  case change:
+  case 'c':
     if(strlen(c->data) == 0) {
       // Delete added lines
       struct Command dc;
       dc.arg1 = c->arg1;
       dc.arg2 = c->arg2;
       dc.data = NULL;
-      dc.type = delete;
+      dc.type = 'd';
       process_delete(&dc);
       free(c->data);
       c->data = dc.data;
@@ -376,7 +349,7 @@ void single_hist_mov(struct Command * c) {
       fclose(in);
     }
     break;
-  case delete:
+  case 'd':
     if(strlen(c->data) == 0) {
       // Redoing
       process_delete(c);
@@ -424,27 +397,27 @@ void append_history(struct Command * c) {
 int process_command(struct Command * c, FILE *fp_in){
   int q = 0;
   switch(c->type) {
-  case quit:
+  case 'q':
     clean_command(c);
     q = 1;
     break;
-  case print:
+  case 'p':
     process_print(c);
     clean_command(c);
     break;
-  case change:
+  case 'c':
     append_history(c);
     process_change(c, fp_in);
     break;
-  case delete:
+  case 'd':
     append_history(c);
     process_delete(c);
     break;
-  case redo:
+  case 'r':
     process_redo(c);
     clean_command(c);
     break;
-  case undo:
+  case 'u':
     process_undo(c);
     clean_command(c);
     break;
