@@ -254,6 +254,13 @@ void process_print(struct Command * c){
 }
 
 void process_delete(struct Command * c){
+  // This function can be called in these cases:
+  //   - unset some on j DOC lines with 1 < j < nlines 
+  //   - set j lines on c->data
+  //   - shift all rows (from the next of the dropped one to NEXT_LINE
+
+  //   - c->is_data_present == true in the end
+  //   - remove j from NEXT_LINE
   int nlines = c->arg2 - c->arg1 + 1;
   char * dropped_strs[nlines];
   int dropped_nlines = 0;
@@ -266,38 +273,31 @@ void process_delete(struct Command * c){
   }
   
   // Initialize to NULL str pointers
-  for(int j = 0; j < nlines; dropped_strs[j] = NULL, j++) { }  
+  for(int j = 0; j < nlines; dropped_strs[j] = NULL, j++) { }
 
-  // Delete
+  // Delete lines from document
   int j = c->arg1;
-  for (; j <= c->arg2; j++) {
-    if (j >= NEXT_LINE) {
-      // The command changes n lines but drops m lines with m < n.
-      // j > NEXT_LINE
-      break;
-    }
+  // Delete at most nlines
+  for (; j <= c->arg2 && j < NEXT_LINE; j++) {
     dropped_strs[j - c->arg1] = DOC[j];
     DOC[j] = NULL;
   }
   dropped_nlines = j - c->arg1;
 
-  // Shift lines (if necessary)
-  if (j < NEXT_LINE) {
-    for(;;j++){
-      if (DOC[j] == NULL)
-	break;
-      DOC[j - dropped_nlines] = DOC[j];
-    }
+  // Shift lines (where necessary)
+  while(DOC[j] != NULL && j < NEXT_LINE) {
+    DOC[j - dropped_nlines] = DOC[j];
+    j++;
   }
+
   //  printf("DELETE: dropped str ptrs (dropped %d)\n", dropped_nlines);
   // Adding data on command
-  for (j = 0; j < nlines; j++) {
+  for (j = 0; j < dropped_nlines; j++) {
     //printf("%p\n", dropped_strs[j]);
     c->data[j] = dropped_strs[j];
   }
   c->data[j] = NULL;
   c->is_data_present = true;
-
   
   // Updating NEXT_LINE
   NEXT_LINE -= dropped_nlines;
@@ -305,31 +305,31 @@ void process_delete(struct Command * c){
 
 
 void process_change(struct Command *c, FILE *fp_in){
+  // Drop j lines with 0 < j < nlines
   FILE * supp = fp_in;   // TODO 1,4c cause fp_in to nil for some reason
   int nlines = c->arg2 - c->arg1 + 1;
   char * dropped_strs[nlines];
   int dropped_nlines = 0;
   // Initialize to NULL str pointers
-  for(int j = 0; j < nlines; dropped_strs[j] = NULL, j++) { }  
+  for(int j = 0; j < nlines; dropped_strs[j] = NULL, j++) { }
+
+  // Invalid change
   if (c->arg1 > NEXT_LINE || c->arg1 == 0) {
     drop_last_hist_command();
     return;
   }
+  
   //  printf("CHANGE: dropped str ptrs (dropped %d)\n", nlines);
   // Drop rows if needed
   if(c->arg1 < NEXT_LINE) {
     int j = c->arg1;
     for (; j <= c->arg2 && j < NEXT_LINE; j++) {
-      if (DOC[j] == NULL) {
-	// The command changes n lines but drops m lines with m < n.
-	break;
-      }
       //  printf("%p\n", DOC[j]);
       dropped_strs[j - c->arg1] = DOC[j];
     }
     dropped_nlines = j - c->arg1;
   }
-
+  
   //  printf("CHANGE: added str ptrs (added %d)\n", nlines);
   if (supp != NULL) {
     // NOT UNDO OR REDO
@@ -357,16 +357,20 @@ void process_change(struct Command *c, FILE *fp_in){
   }
 
   //  printf("CHANGE: dropped (stored) str ptrs (dropped %d)\n", nlines);
+  if(c->is_data_present) {
+    // It there is some data, I used it to save it in the document
+    c->is_data_present = false;
+  }
+  
   int j;
   if(c->arg1 < NEXT_LINE) {
-    for (j = 0; j < c->arg2 - c->arg1 + 1; j++) {
+    // Some line is dropped, i add the data to the comment
+    for (j = 0; j < dropped_nlines; j++) {
       c->data[j] = dropped_strs[j];
       //  printf("%p\n", c->data[j]);
     }
     c->data[j] = NULL;
     c->is_data_present = true;
-  } else {
-    c->is_data_present = false;
   }
 
   NEXT_LINE += nlines - dropped_nlines;
