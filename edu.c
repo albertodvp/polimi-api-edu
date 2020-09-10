@@ -357,10 +357,9 @@ void process_change(struct Command *c, FILE *fp_in){
   }
 
   //  printf("CHANGE: dropped (stored) str ptrs (dropped %d)\n", nlines);
-  if(c->is_data_present) {
-    // It there is some data, I used it to save it in the document
-    c->is_data_present = false;
-  }
+  // It there is some data, I used it to save it in the document
+  // If it was a first time change on a new line, this is already false buy anyway
+  c->is_data_present = false;
   
   int j;
   if(c->arg1 < NEXT_LINE) {
@@ -391,29 +390,27 @@ void single_hist_mov(struct Command * c) {
   case 'd':
     if(c->is_data_present) {
       // Undoing deletion
-      // c->alt 
       // Free lines
-      int j;
-      for(j = 0; ; j++) {
-	if(c->data[j] == NULL){
-	  j--;
-	  break;
-	}
+      int prev_dropped_nlines;
+      for(prev_dropped_nlines = 0; c->data[prev_dropped_nlines] != NULL ; prev_dropped_nlines++) {
       }
-      // Free j lines in c->arg1
-      int i = NEXT_LINE;
+      
+      // Free j lines in c->arg1 (if needed)
+
       if(c->arg1 > NEXT_LINE) {
-	for(i=NEXT_LINE-1;i>=c->arg1;i--) {
-	  DOC[i+j] = DOC[i];
+	for(int j=NEXT_LINE-1;j>=c->arg1;j--) {
+	  DOC[j+prev_dropped_nlines] = DOC[j];
 	}
       }
 
       // Insert lines saved in c->arg1
-      for(;j>0; j--, i++) {
+      for(int j = 0; c->data[j] != NULL; j++) {
 	//printf("i: %d, j: %d", i, j);
-	DOC[i] = c->data[i-c->arg1];
+	DOC[j+c->arg1] = c->data[j];
       }
+      
       c->is_data_present = false;
+      NEXT_LINE += prev_dropped_nlines;
     } else {
       // Redoing deletion or "useless" delete
       process_delete(c);
