@@ -3,21 +3,21 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define MAX_C_CHAR 20 // TODO this will likely fail
-#define MAX_LINE 1040
-#define MAX_LINE_PER_FILE 10000
-#define MAX_LINE_PER_DOC 1000000
-#define MAX_LINE_PER_COMMAND 100
+
+#define MAX_C_CHAR 10
+#define MAX_LINE 1025
+//#define MAX_LINE_PER_FILE 10000
+#define DOC_BATCH 100
+
 /*
   ------  DATA STRUCTURES ------
 */
-
 
 struct Command {
   int arg1;
   int arg2;
   char type;
-  char * data[MAX_LINE_PER_COMMAND];
+  char ** data;
   bool is_data_present;
 } ;
 
@@ -30,9 +30,9 @@ struct History {
 
 struct History * HISTORY = NULL;
 struct History * HISTORY_HEAD = NULL;
-char * DOC[MAX_LINE_PER_DOC] = {};
+char ** DOC = NULL;
 int NEXT_LINE;
-FILE * in_mem_stdin = NULL;
+//FILE * in_mem_stdin = NULL;
 
 /*
   ------  INIT UTILITIES ------
@@ -45,8 +45,10 @@ void inizialize_hist(){
   HISTORY->c = NULL;
   HISTORY_HEAD = HISTORY;
 }
+
 void initialize_doc() {
   NEXT_LINE = 1;
+  DOC = (char **) malloc(sizeof(char *) * DOC_BATCH);
 }
 
 /*
@@ -58,13 +60,22 @@ void print_hist(struct History *h) {
   if(h){
     if(h->c){
       printf("%d,%d%c, is_data_present %d\n", h->c->arg1, h->c->arg2, h->c->type, h->c->is_data_present);
-      /* if (h->c->is_data_present) { */
-      /* 	printf("Data: \n"); */
-      /* 	for(int i = 0; i < MAX_LINE_PER_COMMAND; i++) { */
-      /* 	  if(h->c->data[i] == NULL) break; */
-      /* 	  printf("%s ---\n", h->c->data[i]); */
-      /* 	} */
-      /* 	printf(" End data\n"); */
+      if (h->c->is_data_present) {
+	printf("Data: \n");
+	for(int i = 0; h->c->data[i] != NULL ; i++) {
+	  printf("%p | ", h->c->data[i]);
+	  for (int k=0; k<NEXT_LINE; k++){
+	    if (h->c->data[i] == DOC[k]){
+	      printf("\n\n-------------------------------->\n");
+	      printf("%p\n", h->c->data[i]);
+	      printf("\n\n-------------------------------->\n");
+	      exit(42);
+	    }
+	}
+
+	}
+	printf("\n");
+      }
     } else {
      printf(" ( ) --> \n");
     }
@@ -86,13 +97,13 @@ void print_doc(){
 }
 
 
+
 void print_doc_pointers() {
   printf("DOCUMENT:\n");
   for(int i = 0; i < NEXT_LINE; i++) {
     printf("%d: %p\n", i, DOC[i]);
   }
   printf("END DOCUMENT:\n");
-
 }
 
 void print_history() {
@@ -111,7 +122,6 @@ void print_history() {
   } else {
     printf("History current is HEAD");
   }
-    
 }
 
 
@@ -119,14 +129,12 @@ void print_history() {
   ------  CLEAN-UP UTILITIES ------
 */
 
-/* void clean_doc(struct Row * r){ */
-/*   if (r == NULL) return; */
-/*   clean_doc(r->next); */
-/*   //if (r->data != NULL){ TODO no needed for strtok? */
-/*     //    free(r->data); */
-/*   //  } */
-/*   free(r); */
-/* } */
+void clean_doc(){
+  for (int i=0; i<NEXT_LINE;i++){
+    free(DOC[i]);
+  }
+  free(DOC);
+}
 
 
 void clean_command(struct Command *c) {
@@ -142,6 +150,7 @@ void clean_command(struct Command *c) {
       //      printf("----------> Freed: %p\n", c->data[i]);
     }
     c->is_data_present = false;
+    free(c->data);
   }
   free(c);
   //  printf("----------> Command cleanded\n\n\n");
@@ -163,78 +172,8 @@ void drop_last_hist_command() {
 
 void clean_history_doc(){
   clean_history(HISTORY_HEAD);
-  //  clean_doc(DOC_HEAD);
+  clean_doc();
 }
-
-/*
-  ------ ROW/DOCUMENT UTILITIES ------
- */
-
-
-/* struct Row * create_doc(char *str) { */
-/*   char s[2] = "\n"; */
-/*   char *tok = strtok(str, s); */
-/*   struct Row * d = (struct Row *)malloc(sizeof(struct Row)); */
-/*   d->data = tok; */
-/*   struct Row * supp = d; */
-/*   while((tok = strtok(NULL, s))) { */
-/*     d->next = (struct Row *)malloc(sizeof(struct Row)); */
-/*     d->next->data = tok; */
-/*     d->next->next = NULL; */
-/*     d = d->next; */
-/*   } */
-/*   return supp; */
-/* } */
-
-/* struct Row * change_new(struct Command *c, FILE *fp_in){ */
-
-/* struct Row * drop_rows_from_to(int from, int to){ */
-/*   // from: 2  */
-/*   // to: 3 */
-/*   // doc: (1) -> (a) -> (b) -> (2) -> (3) */
-/*   // */
-/*   // result or drop_rows_from_to(2, 3): (1) -> (2) -> (3) */
-/*   struct Row * p = DOC_HEAD; */
-/*   struct Row * supp = NULL; */
-/*   struct Row * drop = NULL; */
-/*   int i = 1; */
-/*   for(; i<from ; i++, p=p->next) { } */
-/*   drop = p->next; */
-/*   supp = p; */
-/*   for(; i<=to && p != NULL; i++, p=p->next) { } */
-/*   if(p == NULL){ */
-/*     // To is over the last element (e.g. deletion of lines over the last one) */
-/*     supp->next = NULL; */
-/*   } else{ */
-/*     //  */
-/*     supp->next = p->next; */
-/*     p->next = NULL; */
-/*   } */
-/*   NEXT_LINE -= to - i + 1; */
-/*   return drop; */
-/* } */
-
-/* void insert_row_in(struct Row * in, int index){ */
-/*   // in: (a) -> (b) */
-/*   // doc: (1) -> (2) -> (3) */
-/*   // */
-/*   // result or insert_row_in(in, 2): (1) -> (a) -> (b) -> (2) -> (3) */
-/*   struct Row * p = DOC_HEAD; */
-/*   struct Row * supp = NULL; */
-/*   struct Row * supp2 = NULL; */
-/*   int i = 1; */
-/*   for(; i<index ; i++, p=p->next) { } */
-/*   supp = p->next; */
-/*   p->next = in; */
-/*   for(i=0; p; supp2 = p, p=p->next, i++) { } */
-/*   supp2->next = supp; */
-/*   NEXT_LINE += i; */
-/* } */
-
-/*
-  ------  SINGLE COMMAND ROUTINES ------
-*/
-
 
 void process_print(struct Command * c){
   if (c->arg1 == 0) {
@@ -248,6 +187,7 @@ void process_print(struct Command * c){
     if(i >= NEXT_LINE) {
       fputs(".\n", stdout);      
     } else {
+      if(DOC[i])
       fputs(DOC[i], stdout);
     }
   }
@@ -267,6 +207,7 @@ void process_delete(struct Command * c){
 
   if(c->arg1 >= NEXT_LINE) {
     // Trying to delete not existing lines -> do nothing
+    c->data = (char **) malloc(sizeof(char *));
     c->data[0] = NULL;
     c->is_data_present = true;
     return;
@@ -277,6 +218,7 @@ void process_delete(struct Command * c){
 
   // Delete lines from document
   int j = c->arg1;
+  
   // Delete at most nlines
   for (; j <= c->arg2 && j < NEXT_LINE; j++) {
     dropped_strs[j - c->arg1] = DOC[j];
@@ -292,6 +234,7 @@ void process_delete(struct Command * c){
 
   //  printf("DELETE: dropped str ptrs (dropped %d)\n", dropped_nlines);
   // Adding data on command
+  c->data = (char **) malloc(sizeof(char *) * (dropped_nlines+1));
   for (j = 0; j < dropped_nlines; j++) {
     //printf("%p\n", dropped_strs[j]);
     c->data[j] = dropped_strs[j];
@@ -319,18 +262,19 @@ void process_change(struct Command *c, FILE *fp_in){
     return;
   }
   
-  //  printf("CHANGE: dropped str ptrs (dropped %d)\n", nlines);
+  //  printf("CHANGE: dropped str ptrs: \t\t\t");
   // Drop rows if needed
   if(c->arg1 < NEXT_LINE) {
     int j = c->arg1;
     for (; j <= c->arg2 && j < NEXT_LINE; j++) {
-      //  printf("%p\n", DOC[j]);
+      //  printf("%p | ", DOC[j]);
       dropped_strs[j - c->arg1] = DOC[j];
     }
     dropped_nlines = j - c->arg1;
+    //    printf ("(dropped lines: %d) \n", dropped_nlines);
   }
   
-  //  printf("CHANGE: added str ptrs (added %d)\n", nlines);
+  //  printf("CHANGE: added str ptrs: \t\t\t");
   if (supp != NULL) {
     // NOT UNDO OR REDO
     // change text with fp
@@ -339,6 +283,7 @@ void process_change(struct Command *c, FILE *fp_in){
     for(int j = c->arg1;  j <= c->arg2; j++) {
       DOC[j] = (char *)malloc(sizeof(char) * MAX_LINE);
       fgets(DOC[j], MAX_LINE, supp);
+      //      printf("%p | ", DOC[j]);
     }
     // Reading the point
     char point[3]; // ".\n"
@@ -349,28 +294,32 @@ void process_change(struct Command *c, FILE *fp_in){
     int j;
     for(j = c->arg1;  j <= c->arg2 && c->data[j-c->arg1] != NULL; j++) {
       DOC[j] = c->data[j-c->arg1];
-      //  printf("%p\n", DOC[j]);
+      //      printf("%p | ", DOC[j]);
     }
     nlines = j - c->arg1;
   } else {
     exit(3);
   }
+  //  printf ("\n");
 
-  //  printf("CHANGE: dropped (stored) str ptrs (dropped %d)\n", nlines);
+  //  printf("CHANGE: dropped (stored) str ptrs: \t\t\t");
   // It there is some data, I used it to save it in the document
   // If it was a first time change on a new line, this is already false buy anyway
+  free(c->data);
   c->is_data_present = false;
   
   int j;
   if(c->arg1 < NEXT_LINE) {
     // Some line is dropped, i add the data to the comment
+    c->data = (char **) malloc(sizeof(char *) * (dropped_nlines+1));
     for (j = 0; j < dropped_nlines; j++) {
       c->data[j] = dropped_strs[j];
-      //  printf("%p\n", c->data[j]);
+      //  printf("%p | ", dropped_strs[j]);
     }
     c->data[j] = NULL;
     c->is_data_present = true;
   }
+  //  printf("\n\n\n");
 
   NEXT_LINE += nlines - dropped_nlines;
 }
@@ -396,8 +345,7 @@ void single_hist_mov(struct Command * c) {
       }
       
       // Free j lines in c->arg1 (if needed)
-
-      if(c->arg1 > NEXT_LINE) {
+      if(c->arg1 < NEXT_LINE) {
 	for(int j=NEXT_LINE-1;j>=c->arg1;j--) {
 	  DOC[j+prev_dropped_nlines] = DOC[j];
 	}
@@ -527,17 +475,17 @@ int process_command(struct Command * c, FILE *fp_in){
   ------  MAIN RELATED ------
  */
 
-FILE * read_file_in_memory(FILE * fp){
-  int s = (MAX_LINE + 1) * MAX_LINE_PER_FILE;  
-  char * text = (char *)malloc(sizeof(char) * s);
-  fread(text, sizeof(char), s, fp);
-  s = strlen(text) + 1;
-  FILE * out = fmemopen(NULL, sizeof(char) * s, "w+");
-  fputs(text, out);
-  rewind(out);
-  free(text);
-  return out;
-}
+/* FILE * read_file_in_memory(FILE * fp){ */
+/*   int s = (MAX_LINE + 1) * MAX_LINE_PER_FILE;   */
+/*   char * text = (char *)malloc(sizeof(char) * s); */
+/*   fread(text, sizeof(char), s, fp); */
+/*   s = strlen(text) + 1; */
+/*   FILE * out = fmemopen(NULL, sizeof(char) * s, "w+"); */
+/*   fputs(text, out); */
+/*   rewind(out); */
+/*   free(text); */
+/*   return out; */
+//}
 
 int main() {
   struct Command * c;
@@ -548,18 +496,19 @@ int main() {
   initialize_doc();
   inizialize_hist();
   int q = 0;
+  int dim = 1;
   do {
-    /* printf("---------\n"); */
-    /* print_doc(); */
-    /* printf("--- Hist --\n"); */
-    /* printf("---------\n"); */
     c = read_command(in_mem_stdin);
     //    printf("---NEXT COMMAND (%d,%d%c) ------\n", c->arg1, c->arg2, c->type);
     q = process_command(c, in_mem_stdin);
     /* print_doc_pointers(); */
     /* printf("Next line: %d\n", NEXT_LINE); */
     /* print_history(); */
-    //    printf("---------\n\n\n\n\n\n\n");
+    /* printf("---------\n\n\n\n\n\n\n"); */
+    if (NEXT_LINE > dim *DOC_BATCH - DOC_BATCH/10) {
+      DOC = (char **) realloc(DOC, sizeof(char *) * DOC_BATCH);
+      dim++;
+    }
   } while(!q);
   clean_history_doc();  
 }

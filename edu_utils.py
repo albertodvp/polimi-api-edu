@@ -2,7 +2,7 @@ import random as rnd
 import string
 
 MAX = 10
-N_FILES = 10
+N_FILES = 1000
 COMMANDS_PER_FILE = 20
 STR_LEN_RANGE = range(20, 1024)
 
